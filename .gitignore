@@ -143,3 +143,5 @@ bin/
 pyvenv.cfg
 node_modules/
 .envrc
+record_manager.sql
+run_env.sh

@@ -6,7 +6,10 @@ from parser import langchain_docs_extractor
 
 import weaviate
 from bs4 import BeautifulSoup, SoupStrainer
-from langchain.document_loaders import RecursiveUrlLoader, SitemapLoader
+from langchain.document_loaders import (RecursiveUrlLoader, 
+                                        SitemapLoader, 
+                                        ConfluenceLoader)
+
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.indexes import SQLRecordManager, index
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -16,11 +19,19 @@ from langchain.vectorstores import Weaviate
 
 from constants import WEAVIATE_DOCS_INDEX_NAME
 
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path="/Users/alex/projects/3lm/tickets_summary/.env")
+
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 WEAVIATE_URL = os.environ["WEAVIATE_URL"]
 WEAVIATE_API_KEY = os.environ["WEAVIATE_API_KEY"]
 RECORD_MANAGER_DB_URL = os.environ["RECORD_MANAGER_DB_URL"]
+CONFLUENCE_URL = os.environ["CONFLUENCE_URL"]
+CONFLUENCE_KEY = os.environ["CONFLUENCE_KEY"]
+CONFLUENCE_USER = os.environ["CONFLUENCE_USER"]
 
 
 def metadata_extractor(meta: dict, soup: BeautifulSoup) -> dict:
@@ -77,17 +88,27 @@ def load_api_docs():
     ).load()
 
 
+def load_confluence_docs(cql: str):
+    loader = ConfluenceLoader(
+        url=CONFLUENCE_URL, username=CONFLUENCE_USER, api_key=CONFLUENCE_KEY
+    )
+    return loader.load(cql=cql, include_attachments=False, max_pages=10000)
+
+
 def ingest_docs():
-    docs_from_documentation = load_langchain_docs()
-    logger.info(f"Loaded {len(docs_from_documentation)} docs from documentation")
-    docs_from_api = load_api_docs()
-    logger.info(f"Loaded {len(docs_from_api)} docs from API")
+    docs_from_documentation = load_confluence_docs(cql='space=kb and ancestor=2719154177')
+
+    # Waiting on PR to Fix the issue (https://github.com/langchain-ai/langchain/pull/8221)
+    for doc in docs_from_documentation:
+        doc.metadata.update({"pageId": doc.metadata["id"]})
+        doc.metadata.pop("id")
+    logger.info(f"Loaded docs: {len(docs_from_documentation)}")
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
     docs_transformed = text_splitter.split_documents(
-        docs_from_documentation + docs_from_api
+        docs_from_documentation
     )
-
+    logger.info(f"Splitted docs: {len(docs_transformed)}")
     # We try to return 'source' and 'title' metadata when querying vector store and
     # Weaviate will error at query time if one of the attributes is missing from a
     # retrieved document.

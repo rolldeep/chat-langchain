@@ -36,19 +36,13 @@ if __name__ == "__main__":
     # In app, we always pass in a chat history, but for evaluation we don't
     # necessarily do that. Add that handling here.
     def construct_eval_chain():
-        chain = create_chain(
-            retriever=retriever,
-            llm=llm,
-        )
+        chain = create_chain(retriever=retriever, llm=llm,)
         return {
             "question": lambda x: x["question"],
             "chat_history": (lambda x: x.get("chat_history", [])),
         } | chain
 
-    eval_config = RunEvalConfig(
-        evaluators=["qa"],
-        prediction_key="output",
-    )
+    eval_config = RunEvalConfig(evaluators=["qa"], prediction_key="output",)
     results = client.run_on_dataset(
         dataset_name=args.dataset_name,
         llm_or_chain_factory=construct_eval_chain,

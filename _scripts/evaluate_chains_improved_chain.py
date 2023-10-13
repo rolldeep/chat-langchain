@@ -200,9 +200,7 @@ if __name__ == "__main__":
     ds = client.read_dataset(dataset_name=args.dataset_name)
     retriever = _get_retriever()
     constructor = functools.partial(
-        create_chain,
-        retriever=retriever,
-        model_provider=args.model_provider,
+        create_chain, retriever=retriever, model_provider=args.model_provider,
     )
     chain = constructor()
     eval_config = RunEvalConfig(evaluators=["qa"], prediction_key="output")

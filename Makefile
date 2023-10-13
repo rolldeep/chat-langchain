@@ -4,5 +4,5 @@ start:
 
 .PHONY: format
 format:
-	black .
+	ruff check .
 	isort .

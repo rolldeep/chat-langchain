@@ -29,11 +29,15 @@ from pydantic import BaseModel
 from constants import WEAVIATE_DOCS_INDEX_NAME
 
 RESPONSE_TEMPLATE = """\
-You are an expert programmer and problem-solver, tasked with answering any question \
-about Langchain.
+You are an expert programmer and problem-solver, tasked with solving any question \
+about different Lotus company's systems errors. You have access to a knowledge bank of \
+several curated known issues about how to fix support issues from the ticketing system. \
+Also you have curated knowladge about the Lotus systems that generates the bugs and errors.\
+Iclude SQL query snippets in your answer if relevant.
 
-Generate a comprehensive and informative answer of 80 words or less for the \
-given question based solely on the provided search results (URL and content). You must \
+Generate a comprehensive and informative answer for the \
+given question or error or log text based solely on the \
+provided search results (URL and content). You must \
 only use information from the provided search results. Use an unbiased and \
 journalistic tone. Combine search results together into a coherent answer. Do not \
 repeat text. Cite search results using [${{number}}] notation. Only cite the most \
@@ -120,9 +124,7 @@ def create_retriever_chain(
             | CONDENSE_QUESTION_PROMPT
             | llm
             | StrOutputParser()
-        ).with_config(
-            run_name="CondenseQuestion",
-        )
+        ).with_config(run_name="CondenseQuestion",)
         conversation_chain = condense_question_chain | retriever
         return conversation_chain
 
@@ -136,9 +138,7 @@ def format_docs(docs: Sequence[Document]) -> str:
 
 
 def create_chain(
-    llm: BaseLanguageModel,
-    retriever: BaseRetriever,
-    use_chat_history: bool = False,
+    llm: BaseLanguageModel, retriever: BaseRetriever, use_chat_history: bool = False,
 ) -> Runnable:
     retriever_chain = create_retriever_chain(
         llm, retriever, use_chat_history
@@ -195,22 +195,13 @@ async def chat_endpoint(request: ChatRequest):
         "conversation_id": request.conversation_id,
     }
 
-    llm = ChatOpenAI(
-        model="gpt-3.5-turbo-16k",
-        streaming=True,
-        temperature=0,
-    )
+    llm = ChatOpenAI(model="gpt-3.5-turbo-16k", streaming=True, temperature=0,)
     retriever = get_retriever()
     answer_chain = create_chain(
-        llm,
-        retriever,
-        use_chat_history=bool(converted_chat_history),
+        llm, retriever, use_chat_history=bool(converted_chat_history),
     )
     stream = answer_chain.astream_log(
-        {
-            "question": question,
-            "chat_history": converted_chat_history,
-        },
+        {"question": question, "chat_history": converted_chat_history,},
         config={"metadata": metadata},
         include_names=["FindDocs"],
     )
@@ -245,9 +236,7 @@ async def update_feedback(request: Request):
             "code": 400,
         }
     client.update_feedback(
-        feedback_id,
-        score=data.get("score"),
-        comment=data.get("comment"),
+        feedback_id, score=data.get("score"), comment=data.get("comment"),
     )
     return {"result": "patched feedback successfully", "code": 200}
 
@@ -263,7 +252,7 @@ async def aget_trace_url(run_id: str) -> str:
             await _arun(client.read_run, run_id)
             break
         except langsmith.utils.LangSmithError:
-            await asyncio.sleep(1**i)
+            await asyncio.sleep(1 ** i)
 
     if await _arun(client.run_is_shared, run_id):
         return await _arun(client.read_run_shared_link, run_id)
